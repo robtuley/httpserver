@@ -25,7 +25,7 @@ func newGracefulListener(port int) (*gracefulListener, error) {
 
 	tcpL, ok := listener.(*net.TCPListener)
 	if !ok {
-		return gL, errors.New("Cannot wrap listener")
+		return gL, errors.New("cannot wrap listener")
 	}
 	gL.TCPListener = tcpL
 
@@ -39,7 +39,7 @@ func (gL *gracefulListener) Accept() (net.Conn, error) {
 
 		select {
 		case <-gL.stopC:
-			return nil, errors.New("Listener stopped")
+			return nil, errors.New("listener stopped")
 		default:
 			// still listening, continue as normal
 		}
