@@ -4,7 +4,10 @@ package httpserver
 
 import (
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 )
 
 // Service presents a http.ServeMux interface
@@ -50,6 +53,30 @@ func (s *Service) Start() {
 func (s *Service) Stop() {
 	s.tcpL.Stop()
 	<-s.HasStoppedC
+}
+
+// WaitStop waits for a OS term signal, then stops
+func (s *Service) WaitStop() os.Signal {
+	var sig os.Signal
+	sigC := make(chan os.Signal)
+	signal.Notify(sigC,
+		syscall.SIGKILL,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+
+WaitForStop:
+	for {
+		select {
+		case sig = <-sigC:
+			s.Stop()
+		case <-s.HasStoppedC:
+			break WaitForStop
+		}
+	}
+
+	return sig
 }
 
 // Err from service running if any

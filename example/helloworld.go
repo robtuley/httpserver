@@ -4,9 +4,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/robtuley/httpserver"
 )
@@ -23,27 +20,10 @@ func main() {
 	})
 
 	service.Start()
-	log.Println("started:> ")
+	log.Println("started:> ok")
 
-	osStopC := make(chan os.Signal)
-	signal.Notify(osStopC,
-		syscall.SIGKILL,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-	)
-
-WaitForStop:
-	for {
-		select {
-		case s := <-osStopC:
-			log.Println("stopping:> from OS signal", s)
-			service.Stop()
-		case <-service.HasStoppedC:
-			log.Println("stopped:> all conns closed")
-			break WaitForStop
-		}
-	}
+	sig := service.WaitStop()
+	log.Println("stopped:> ", sig)
 
 	if err = service.Err(); err != nil {
 		log.Println("error:> ", err)
