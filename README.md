@@ -8,28 +8,4 @@ Adds graceful shutdown & health-check utilities to the standard http.Server.
 Usage
 -----
 
-    func main() {
-    	service, err := httpserver.New(8080)
-    	if err != nil {
-    		panic(err)
-    	}
-    
-    	service.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
-    		res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-    		io.WriteString(res, "Hello World")
-    	})
-    
-    	service.Run()
-    
-    	stopC := make(chan os.Signal)
-    	signal.Notify(stopC,
-    		syscall.SIGKILL,
-    		syscall.SIGQUIT,
-    		syscall.SIGHUP,
-    		syscall.SIGINT,
-    		syscall.SIGTERM,
-    	)
-    	<-stopC
-    
-    	service.Stop()
-    }
+For a usage example, see `example/helloworld.go` which implements a simple hello world HTTP server.

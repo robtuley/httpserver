@@ -10,15 +10,18 @@ import (
 // see http://www.hydrogen18.com/blog/stop-listening-http-server-go.html
 type gracefulListener struct {
 	*net.TCPListener
-	stopC chan bool
+	HasStoppedC chan bool
+	StoppedErr  error
 }
 
 func newGracefulListener(port int) (*gracefulListener, error) {
+	portStr := ":" + strconv.Itoa(port)
 	gL := &gracefulListener{
-		stopC: make(chan bool),
+		HasStoppedC: make(chan bool),
+		StoppedErr:  errors.New(portStr + " listener stopped"),
 	}
 
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+	listener, err := net.Listen("tcp", portStr)
 	if err != nil {
 		return gL, err
 	}
@@ -38,8 +41,8 @@ func (gL *gracefulListener) Accept() (net.Conn, error) {
 		newConn, err := gL.TCPListener.Accept()
 
 		select {
-		case <-gL.stopC:
-			return nil, errors.New("listener stopped")
+		case <-gL.HasStoppedC:
+			return nil, gL.StoppedErr
 		default:
 			// still listening, continue as normal
 		}
@@ -59,5 +62,5 @@ func (gL *gracefulListener) Accept() (net.Conn, error) {
 }
 
 func (gL *gracefulListener) Stop() {
-	close(gL.stopC)
+	close(gL.HasStoppedC)
 }

@@ -10,15 +10,18 @@ import (
 // Service presents a http.ServeMux interface
 type Service struct {
 	*http.ServeMux
+	HasStoppedC chan bool
+
+	runErr    error
 	tcpL      *gracefulListener
-	waitGroup *sync.WaitGroup
+	startOnce sync.Once
 }
 
 // New creates a HTTP service listening on the specified port
 func New(port int) (*Service, error) {
 	s := &Service{
-		ServeMux:  http.NewServeMux(),
-		waitGroup: &sync.WaitGroup{},
+		ServeMux:    http.NewServeMux(),
+		HasStoppedC: make(chan bool),
 	}
 
 	tcpL, err := newGracefulListener(port)
@@ -30,19 +33,26 @@ func New(port int) (*Service, error) {
 	return s, nil
 }
 
-// Run starts the HTTP service responding to requests
-func (s *Service) Run() {
-	server := http.Server{Handler: s.ServeMux}
-
-	s.waitGroup.Add(1)
-	go func() {
-		defer s.waitGroup.Done()
-		server.Serve(s.tcpL)
-	}()
+// Start the HTTP service responding to requests
+func (s *Service) Start() {
+	s.startOnce.Do(func() {
+		go func() {
+			err := http.Serve(s.tcpL, s.ServeMux)
+			close(s.HasStoppedC)
+			if err != nil && err != s.tcpL.StoppedErr {
+				s.runErr = err
+			}
+		}()
+	})
 }
 
 // Stop shuts down the HTTP service
 func (s *Service) Stop() {
 	s.tcpL.Stop()
-	s.waitGroup.Wait()
+	<-s.HasStoppedC
+}
+
+// Err from service running if any
+func (s *Service) Err() error {
+	return s.runErr
 }
